@@ -84,8 +84,8 @@ class P3AIClient:
                     print("  ❌ Missing: AGENT_SEED in .env")
                 print("=" * 60)
         
-        except ImportError:
-            print("⚠ zyndai-agent package not found. Install: pip install zyndai-agent")
+        except ImportError as e:
+            print(f"⚠ zyndai-agent package not found. ImportError: {e}\nInstall: pip install zyndai-agent")
         except Exception as e:
             print(f"⚠ Could not initialize P3AI agent: {e}")
             print("  Running in simulation mode")
