@@ -30,8 +30,9 @@ ENV CARGO_HOME=/app/.cargo \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     sh -s -- -y --default-toolchain stable --no-modify-path
 
-# Copy requirements
-COPY requirements.txt .
+
+# Always copy requirements.txt from backend directory (for monorepo safety)
+COPY backend/requirements.txt ./requirements.txt
 
 
 # Print requirements.txt for verification
@@ -40,8 +41,8 @@ RUN echo "===== requirements.txt contents =====" && cat requirements.txt && echo
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy application code from backend directory only
+COPY backend .
 
 # Expose port
 EXPOSE 8000
