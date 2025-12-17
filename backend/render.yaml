@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: policy-navigator-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AGENT_SEED
+        sync: false
+      - key: P3AI_NETWORK
+        value: mainnet
