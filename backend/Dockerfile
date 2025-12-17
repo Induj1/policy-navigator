@@ -10,6 +10,11 @@ RUN apt-get update && apt-get install -y \
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+ENV CARGO_HOME="/root/.cargo"
+
+# Create cargo directories with proper permissions
+RUN mkdir -p /root/.cargo/registry && \
+    chmod -R 777 /root/.cargo
 
 # Set working directory
 WORKDIR /app
@@ -17,7 +22,8 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies with Cargo env variables
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
