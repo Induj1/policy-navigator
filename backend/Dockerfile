@@ -30,10 +30,18 @@ RUN . /app/.cargo/env && rustc --version && cargo --version
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies with Cargo environment
+# Create pip.conf to disable build isolation and use our Cargo settings
+RUN mkdir -p /root/.config/pip && \
+    echo "[global]" > /root/.config/pip/pip.conf && \
+    echo "no-build-isolation = True" >> /root/.config/pip/pip.conf
+
+# Install build tools first
 RUN . /app/.cargo/env && \
-    pip install --no-cache-dir --upgrade pip && \
-    CARGO_HOME=/app/.cargo RUSTUP_HOME=/app/.rustup pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --upgrade pip setuptools wheel maturin
+
+# Install Python dependencies with Cargo environment, no build isolation
+RUN . /app/.cargo/env && \
+    pip install --no-cache-dir --no-build-isolation -r requirements.txt
 
 # Copy application code
 COPY . .
