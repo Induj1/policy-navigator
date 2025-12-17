@@ -1,11 +1,6 @@
 # Use Python 3.12 slim image
 FROM python:3.12-slim
 
-# Set Cargo home to writable location BEFORE installing anything
-ENV CARGO_HOME="/tmp/cargo"
-ENV RUSTUP_HOME="/tmp/rustup"
-ENV PATH="/tmp/cargo/bin:${PATH}"
-
 # Install system dependencies including Rust
 RUN apt-get update && apt-get install -y \
     curl \
@@ -13,22 +8,32 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create cargo directories with proper permissions
-RUN mkdir -p /tmp/cargo /tmp/rustup && \
-    chmod -R 777 /tmp/cargo /tmp/rustup
-
-# Install Rust with custom home
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-
-# Set working directory
+# Set working directory early
 WORKDIR /app
+
+# Set Cargo/Rust environment variables to writable locations
+ENV CARGO_HOME=/app/.cargo
+ENV RUSTUP_HOME=/app/.rustup
+ENV PATH="/app/.cargo/bin:${PATH}"
+
+# Create directories with proper permissions
+RUN mkdir -p /app/.cargo /app/.rustup && \
+    chmod -R 777 /app/.cargo /app/.rustup
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --no-modify-path --default-toolchain stable
+
+# Verify Rust installation
+RUN . /app/.cargo/env && rustc --version && cargo --version
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with Cargo environment
+RUN . /app/.cargo/env && \
+    pip install --no-cache-dir --upgrade pip && \
+    CARGO_HOME=/app/.cargo RUSTUP_HOME=/app/.rustup pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
