@@ -107,16 +107,28 @@ Return rules in JSON format: [{"key": "...", "operator": "...", "value": ...}]""
         rules = []
         text_lower = raw_text.lower()
         
-        # Pattern: income below/less than X
-        income_match = re.search(r'income\s+(?:below|less than|under)\s+(\d+)', text_lower)
+        # Pattern 1: income not exceed / must not exceed
+        income_match = re.search(r'income\s+(?:must\s+)?(?:not\s+)?(?:exceed|exceeding?)\s+[₹$]?\s*(\d[\d,]+)', text_lower)
         if income_match:
+            value = int(income_match.group(1).replace(',', ''))
             rules.append(PolicyRule(
                 key="income",
                 operator=OperatorEnum.LESS_THAN_OR_EQUAL,
-                value=int(income_match.group(1))
+                value=value
             ))
         
-        # Pattern: permanent/resident of State
+        # Pattern 2: income below/less than X
+        if not income_match:
+            income_match2 = re.search(r'income\s+(?:below|less\s+than|under)\s+[₹$]?\s*(\d[\d,]+)', text_lower)
+            if income_match2:
+                value = int(income_match2.group(1).replace(',', ''))
+                rules.append(PolicyRule(
+                    key="income",
+                    operator=OperatorEnum.LESS_THAN_OR_EQUAL,
+                    value=value
+                ))
+        
+        # Pattern 3: permanent/resident of State
         state_match = re.search(r'(?:permanent\s+)?resident\s+of\s+(\w+)', text_lower)
         if state_match:
             rules.append(PolicyRule(
@@ -125,7 +137,7 @@ Return rules in JSON format: [{"key": "...", "operator": "...", "value": ...}]""
                 value=state_match.group(1).title()
             ))
         
-        # Pattern: enrolled student / must be student
+        # Pattern 4: enrolled student / must be student
         if re.search(r'(?:enrolled|full-time)\s+student|must\s+be\s+(?:a\s+)?student', text_lower):
             rules.append(PolicyRule(
                 key="is_student",
@@ -133,8 +145,8 @@ Return rules in JSON format: [{"key": "...", "operator": "...", "value": ...}]""
                 value=True
             ))
         
-        # Pattern: disability of at least X percent
-        disability_match = re.search(r'disability\s+of\s+at\s+least\s+(\d+)\s*(?:percent|%)', text_lower)
+        # Pattern 5: disability percentage should be at least X / disability of at least X
+        disability_match = re.search(r'disability\s+(?:percentage\s+)?(?:should\s+be|must\s+be|of)?\s*(?:at\s+least)\s+(\d+)\s*(?:percent|%)', text_lower)
         if disability_match:
             rules.append(PolicyRule(
                 key="disability_percentage",
@@ -142,23 +154,39 @@ Return rules in JSON format: [{"key": "...", "operator": "...", "value": ...}]""
                 value=int(disability_match.group(1))
             ))
         
-        # Pattern: minimum age / age at least X
-        min_age_match = re.search(r'(?:minimum\s+age|age\s+(?:at\s+least|minimum)).*?(\d+)\s*years?', text_lower)
-        if min_age_match:
+        # Pattern 6: age between X and Y
+        age_range_match = re.search(r'age\s+(?:must\s+be\s+)?between\s+(\d+)\s+and\s+(\d+)', text_lower)
+        if age_range_match:
+            min_age = int(age_range_match.group(1))
+            max_age = int(age_range_match.group(2))
             rules.append(PolicyRule(
                 key="age",
                 operator=OperatorEnum.GREATER_THAN_OR_EQUAL,
-                value=int(min_age_match.group(1))
+                value=min_age
             ))
-        
-        # Pattern: maximum age / age below X
-        max_age_match = re.search(r'(?:maximum\s+age|age\s+(?:below|under|less\s+than)).*?(\d+)\s*years?', text_lower)
-        if max_age_match:
             rules.append(PolicyRule(
                 key="age",
                 operator=OperatorEnum.LESS_THAN_OR_EQUAL,
-                value=int(max_age_match.group(1))
+                value=max_age
             ))
+        else:
+            # Pattern 7: minimum age / age at least X
+            min_age_match = re.search(r'(?:minimum\s+age|age\s+(?:at\s+least|minimum|above)).*?(\d+)\s*years?', text_lower)
+            if min_age_match:
+                rules.append(PolicyRule(
+                    key="age",
+                    operator=OperatorEnum.GREATER_THAN_OR_EQUAL,
+                    value=int(min_age_match.group(1))
+                ))
+            
+            # Pattern 8: maximum age / age below X
+            max_age_match = re.search(r'(?:maximum\s+age|age\s+(?:below|under|less\s+than|maximum)).*?(\d+)\s*years?', text_lower)
+            if max_age_match:
+                rules.append(PolicyRule(
+                    key="age",
+                    operator=OperatorEnum.LESS_THAN_OR_EQUAL,
+                    value=int(max_age_match.group(1))
+                ))
         
         # Pattern: age above/over X (without already matching minimum age)
         if not min_age_match:
@@ -211,3 +239,7 @@ Return rules in JSON format: [{"key": "...", "operator": "...", "value": ...}]""
             return "Financial assistance"
         
         return "Government benefit program"
+
+
+# Global instance
+policy_interpreter_agent = PolicyInterpreterAgent()
