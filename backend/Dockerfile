@@ -13,28 +13,27 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
+# Create our writable cargo directory FIRST
+RUN mkdir -p /app/.cargo /app/.rustup
+
+# Remove read-only cargo directory if it exists and symlink to our writable one
+RUN rm -rf /usr/local/cargo /usr/local/rustup && \
+    ln -s /app/.cargo /usr/local/cargo && \
+    ln -s /app/.rustup /usr/local/rustup
+
 # Set Cargo environment variables
 ENV CARGO_HOME=/app/.cargo \
     RUSTUP_HOME=/app/.rustup \
     PATH="/app/.cargo/bin:${PATH}"
 
-# Create cargo directories
-RUN mkdir -p /app/.cargo /app/.rustup
-
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     sh -s -- -y --default-toolchain stable --no-modify-path
 
-# Create a cargo wrapper script to always use our paths
-RUN echo '#!/bin/bash\nCARGO_HOME=/app/.cargo RUSTUP_HOME=/app/.rustup /app/.cargo/bin/cargo "$@"' > /usr/local/bin/cargo && \
-    chmod +x /usr/local/bin/cargo && \
-    echo '#!/bin/bash\nCARGO_HOME=/app/.cargo RUSTUP_HOME=/app/.rustup /app/.cargo/bin/rustc "$@"' > /usr/local/bin/rustc && \
-    chmod +x /usr/local/bin/rustc
-
 # Copy requirements
 COPY requirements.txt .
 
-# Upgrade pip and install packages
+# Upgrade pip and install packages (newer versions have pre-built wheels)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
