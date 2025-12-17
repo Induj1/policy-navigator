@@ -37,9 +37,12 @@ COPY backend/requirements.txt ./requirements.txt
 
 # Print requirements.txt for verification
 RUN echo "===== requirements.txt contents =====" && cat requirements.txt && echo "======================================="
+
 # Upgrade pip and install packages (newer versions have pre-built wheels)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    echo "===== zyndai-agent info =====" && pip show zyndai-agent || echo "zyndai-agent not found" && \
+    echo "===== p3ai-agent info =====" && pip show p3ai-agent || echo "p3ai-agent not found"
 
 # Copy application code from backend directory only
 COPY backend .
