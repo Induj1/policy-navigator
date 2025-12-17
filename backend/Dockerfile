@@ -33,6 +33,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
 # Copy requirements
 COPY requirements.txt .
 
+
+# Print requirements.txt for verification
+RUN echo "===== requirements.txt contents =====" && cat requirements.txt && echo "======================================="
 # Upgrade pip and install packages (newer versions have pre-built wheels)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
