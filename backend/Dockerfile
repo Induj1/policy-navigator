@@ -1,13 +1,15 @@
 # Use Python 3.11 which has more pre-built wheels
 FROM python:3.11-slim
 
-# Install system dependencies including Rust
+# Install system dependencies including Rust and OCR/PDF tools
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     git \
     pkg-config \
     libssl-dev \
+    tesseract-ocr \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
