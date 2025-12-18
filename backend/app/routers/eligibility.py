@@ -57,19 +57,20 @@ async def check_single_eligibility(request: EligibilityCheckRequest):
     try:
         from app.agents.eligibility_agent import EligibilityAgent
         from app.agents.credential_issuer_agent import CredentialIssuerAgent
-        
+        client = get_p3ai_client()
+        llm = client.get_llm()
+
         # Issue credentials
         credential_agent = CredentialIssuerAgent()
         cred_result = credential_agent.handle({
             "citizen_profile": request.citizen_profile
         })
-        
         request.citizen_profile.credentials = cred_result["credentials"]
-        
+
         # Check eligibility for each policy
         eligibility_agent = EligibilityAgent()
         results = []
-        
+
         for policy in request.policies:
             result = eligibility_agent.handle({
                 "citizen_profile": request.citizen_profile,
@@ -77,11 +78,33 @@ async def check_single_eligibility(request: EligibilityCheckRequest):
             })
             if result.get("result"):
                 results.append(result["result"])
-        
+
+        # If no results, use OpenAI LLM to generate an eligibility response
+        if not results and llm is not None:
+            prompt = f"Check eligibility for the following citizen profile and category.\nProfile: {request.citizen_profile.dict()}\nCategory: {getattr(request, 'category', 'N/A')}\nReturn a list of eligible government schemes with a short description."
+            try:
+                llm_response = llm.invoke(prompt)
+                results.append({
+                    "name": "LLM Suggested Schemes",
+                    "description": llm_response,
+                    "eligible": True,
+                    "confidence": 1.0,
+                    "eligibility_match": "LLM generated",
+                    "how_to_apply": "See description."
+                })
+            except Exception as llm_error:
+                results.append({
+                    "name": "LLM Error",
+                    "description": str(llm_error),
+                    "eligible": False,
+                    "confidence": 0.0,
+                    "eligibility_match": "LLM error",
+                    "how_to_apply": "N/A"
+                })
+
         return {
             "results": results,
             "total_checked": len(results)
         }
-    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking eligibility: {str(e)}")

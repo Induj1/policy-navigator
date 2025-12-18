@@ -5,6 +5,10 @@ Handles P3AI agent initialization, LLM setup, and network communication
 from typing import Optional
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class P3AIClient:
@@ -21,7 +25,7 @@ class P3AIClient:
         # Try to initialize P3AI agent
         try:
             from zyndai_agent.agent import ZyndAIAgent, AgentConfig
-            
+            # If this import succeeds, the package is present in the environment.
             # Look for identity credential file in multiple locations
             identity_paths = [
                 Path("identity_credential.json"),
@@ -85,7 +89,10 @@ class P3AIClient:
                 print("=" * 60)
         
         except ImportError as e:
-            print(f"⚠ zyndai-agent package not found. ImportError: {e}\nInstall: pip install zyndai-agent")
+            # This means Python couldn't import from zyndai_agent, even if pip installed it.
+            # Common causes: wrong module path, shadowing by a local zyndai_agent.py, or env mismatch.
+            print(f"⚠ zyndai-agent import failed: {e}")
+            print("  → Verify the correct import path for the SDK and that no local file named 'zyndai_agent.py' shadows the package.")
         except Exception as e:
             print(f"⚠ Could not initialize P3AI agent: {e}")
             print("  Running in simulation mode")

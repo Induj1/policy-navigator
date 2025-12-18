@@ -1,11 +1,9 @@
-from p3ai_agent.agent import P3AIAgent
 from langchain_openai import ChatOpenAI
 from .base_agent import BaseAgent
 
 class AdvocacyAgent(BaseAgent):
-    def __init__(self, p3ai_agent: P3AIAgent, llm: ChatOpenAI):
-        self.p3ai_agent = p3ai_agent
-        self.llm = llm
+    def __init__(self, llm: ChatOpenAI):
+        super().__init__(llm)
 
     def handle(self, citizen_profile, policies):
         guidance = self.generate_guidance(citizen_profile, policies)
