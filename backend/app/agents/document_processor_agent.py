@@ -169,8 +169,11 @@ class DocumentProcessorAgent(BaseAgent):
                 text = pytesseract.image_to_string(image, lang='eng')
                 return text.strip()
         except Exception as e:
+            # In hosted environments (like Render) Tesseract may not be installed.
+            # Failing hard here turns every upload into a 500 error, so instead
+            # we log and return empty text to allow graceful fallback.
             print(f"OCR extraction failed: {e}")
-            raise
+            return ""
     
     async def detect_document_language(self, text: str) -> str:
         """Detect the language of extracted text"""
