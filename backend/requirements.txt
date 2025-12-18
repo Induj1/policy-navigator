@@ -4,8 +4,7 @@ uvicorn[standard]==0.32.0
 pydantic==2.10.3
 pydantic-settings==2.6.1
 
-# Zynd / P3 protocol SDK
-p3ai-agent==0.1.0
+# Zynd / P3 protocol SDK (zyndai-agent comes in via its own dependencies)
 langchain-openai>=0.3.0
 
 python-dotenv==1.0.0
