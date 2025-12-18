@@ -20,11 +20,8 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    # Allow production frontend and local dev frontend
-    allow_origins=[
-        "https://policy-navigator-18a3.onrender.com",
-        "http://localhost:3000",
-    ],
+    # Allow all origins so local dev (any localhost port) and production frontends can reach the API
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
