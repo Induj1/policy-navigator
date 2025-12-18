@@ -5,6 +5,7 @@ Handles P3AI agent initialization, LLM setup, and network communication
 from typing import Optional
 import os
 from pathlib import Path
+import json
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -26,22 +27,60 @@ class P3AIClient:
         try:
             from zyndai_agent.agent import ZyndAIAgent, AgentConfig
             # If this import succeeds, the package is present in the environment.
-            # Look for identity credential file in multiple locations
-            identity_paths = [
-                Path("identity_credential.json"),
-                Path("backend/identity_credential.json"),
-                Path("../identity_credential.json"),
-            ]
-            
+
+            # Determine which credential file path we're actually using
+            env_identity_path = os.getenv("P3AI_IDENTITY_PATH")
+            identity_paths = []
+            if env_identity_path:
+                identity_paths.append(Path(env_identity_path))
+            identity_paths.extend(
+                [
+                    Path("identity_credential.json"),
+                    Path("backend/identity_credential.json"),
+                    Path("../identity_credential.json"),
+                    Path("/etc/secrets/identity_credential.json"),
+                ]
+            )
+
             identity_path = None
             for path in identity_paths:
                 if path.exists():
                     identity_path = path
                     break
-            
+
             secret_seed = os.getenv("AGENT_SEED") or os.getenv("AGENT_SECRET_SEED")
-            
+
             if identity_path and secret_seed:
+                # Debug: show which credential file is actually being loaded
+                print("📄 Credential file path:", identity_path)
+                try:
+                    with identity_path.open() as f:
+                        credential = json.load(f)
+                except Exception as cred_err:
+                    raise ValueError(f"Could not read credential JSON: {cred_err}") from cred_err
+
+                print("📄 Credential top-level keys:", list(credential.keys()))
+                print("📄 Credential issuer (top-level):", credential.get("issuer"))
+
+                # Normalize for SDK expectations: ensure top-level 'issuer' exists
+                if "issuer" not in credential and "vc" in credential and isinstance(
+                    credential["vc"], dict
+                ) and "issuer" in credential["vc"]:
+                    credential["issuer"] = credential["vc"]["issuer"]
+                    print("🔧 Injected top-level issuer from vc.issuer")
+
+                if "issuer" not in credential:
+                    raise ValueError(
+                        f"Invalid identity credential: top-level 'issuer' missing. Keys={list(credential.keys())}"
+                    )
+
+                # Write back normalized credential so zyndai-agent sees the fixed structure
+                try:
+                    with identity_path.open("w") as f:
+                        json.dump(credential, f)
+                except Exception as write_err:
+                    raise ValueError(f"Could not write normalized credential: {write_err}") from write_err
+
                 # Configure agent to connect to real P3AI network
                 agent_config = AgentConfig(
                     default_outbox_topic=None,  # Auto-connect to other agents
@@ -50,7 +89,7 @@ class P3AIClient:
                     registry_url="https://registry.zynd.ai",  # Production registry
                     mqtt_broker_url="mqtt://registry.zynd.ai:1883",  # Production MQTT
                     identity_credential_path=str(identity_path.absolute()),
-                    secret_seed=secret_seed
+                    secret_seed=secret_seed,
                 )
                 
                 # Initialize ZyndAI agent
